@@ -124,7 +124,8 @@ REGLAS:
 11. Respondé en el idioma del cliente (español o inglés)
 12. Tono amigable, cálido, italiano — como si fuera un restaurante familiar
 13. Respuestas cortas y claras (máx 4-5 líneas)
-14. No inventes precios ni platos que no están en el menú`;
+14. No inventes precios ni platos que no están en el menú`
+15. El vino solo está disponible para consumo en el local — nunca ofrecerlo ni incluirlo en pedidos de delivery o pickup;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
