@@ -1,6 +1,11 @@
 const Anthropic = require("@anthropic-ai/sdk");
+const { createClient } = require("@supabase/supabase-js");
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 const MENU = `
 PIZZAS (precio por tamaño S/M/L/XL):
@@ -124,7 +129,9 @@ REGLAS:
 12. Tono amigable, cálido, italiano — como si fuera un restaurante familiar
 13. Respuestas cortas y claras (máx 4-5 líneas)
 14. No inventes precios ni platos que no están en el menú
-15. El vino solo está disponible para consumo en el local — nunca ofrecerlo ni incluirlo en pedidos de delivery o pickup. Si el cliente lo pide para delivery decile que el vino solo se sirve en el local, pero puede elegir cerveza u otra bebida`;
+15. El vino solo está disponible para consumo en el local — nunca ofrecerlo ni incluirlo en pedidos de delivery o pickup. Si el cliente lo pide para delivery decile que el vino solo se sirve en el local, pero puede elegir cerveza u otra bebida
+16. Cuando el cliente confirme el pago (diga "ya pagué", "listo pagué", "hice el pago", "transferí" o similar) respondé EXACTAMENTE con este formato JSON al final de tu mensaje, sin espacios extra:
+GUARDAR_PEDIDO:{"nombre":"[nombre]","telefono":"[telefono]","tipo":"[delivery o pickup]","direccion":"[direccion o vacío si pickup]","items":"[lista de items]","total":[número],"metodo_pago":"[zelle o tarjeta]","estado":"confirmado"}`;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -143,7 +150,24 @@ module.exports = async (req, res) => {
       messages,
     });
 
-    res.status(200).json({ reply: response.content[0].text });
+    let reply = response.content[0].text;
+
+    // Detectar si Giovanni quiere guardar un pedido
+    if (reply.includes("GUARDAR_PEDIDO:")) {
+      try {
+        const jsonMatch = reply.match(/GUARDAR_PEDIDO:(\{.*?\})/s);
+        if (jsonMatch) {
+          const pedidoData = JSON.parse(jsonMatch[1]);
+          await supabase.from("pedidos").insert([pedidoData]);
+          // Limpiar el JSON del mensaje antes de enviarlo al cliente
+          reply = reply.replace(/GUARDAR_PEDIDO:\{.*?\}/s, "").trim();
+        }
+      } catch (e) {
+        console.error("Error guardando pedido:", e);
+      }
+    }
+
+    res.status(200).json({ reply });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "Error al procesar el mensaje" });
