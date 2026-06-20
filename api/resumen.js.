@@ -1,0 +1,103 @@
+const { createClient } = require("@supabase/supabase-js");
+const { Resend } = require("resend");
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+module.exports = async (req, res) => {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  try {
+    const hoy = new Date().toISOString().split("T")[0];
+
+    const { data: pedidos } = await supabase
+      .from("pedidos")
+      .select("*")
+      .gte("created_at", `${hoy}T00:00:00`)
+      .order("created_at", { ascending: false });
+
+    const { data: leads } = await supabase
+      .from("leads")
+      .select("*")
+      .gte("created_at", `${hoy}T00:00:00`);
+
+    const totalPedidos = pedidos?.length || 0;
+    const delivery = pedidos?.filter(p => p.tipo === "delivery").length || 0;
+    const pickup = pedidos?.filter(p => p.tipo === "pickup").length || 0;
+    const totalLeads = leads?.length || 0;
+
+    const listaPedidos = pedidos?.map(p =>
+      `<tr>
+        <td style="padding:8px;border-bottom:1px solid #eee">${p.nombre || "—"}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">${p.tipo || "—"}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">${p.items || "—"}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">$${p.total || "—"}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee">${p.estado || "pendiente"}</td>
+      </tr>`
+    ).join("") || "<tr><td colspan='5' style='padding:8px;color:#888'>Sin pedidos hoy</td></tr>";
+
+    const html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+        <div style="background:#8B0000;padding:24px;border-radius:8px 8px 0 0">
+          <h1 style="color:white;margin:0;font-size:20px">🍕 Il Ponte Vecchio</h1>
+          <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:14px">Resumen del día — ${new Date().toLocaleDateString('es-AR', { timeZone: 'America/New_York', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+
+        <div style="background:#f9f9f9;padding:24px">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+            <div style="background:white;padding:16px;border-radius:8px;text-align:center;border:1px solid #eee">
+              <div style="font-size:24px;font-weight:600;color:#8B0000">${totalPedidos}</div>
+              <div style="font-size:12px;color:#888;margin-top:4px">Pedidos</div>
+            </div>
+            <div style="background:white;padding:16px;border-radius:8px;text-align:center;border:1px solid #eee">
+              <div style="font-size:24px;font-weight:600;color:#1a5c8B">${delivery}</div>
+              <div style="font-size:12px;color:#888;margin-top:4px">Delivery</div>
+            </div>
+            <div style="background:white;padding:16px;border-radius:8px;text-align:center;border:1px solid #eee">
+              <div style="font-size:24px;font-weight:600;color:#1a6b1a">${pickup}</div>
+              <div style="font-size:12px;color:#888;margin-top:4px">Pickup</div>
+            </div>
+            <div style="background:white;padding:16px;border-radius:8px;text-align:center;border:1px solid #eee">
+              <div style="font-size:24px;font-weight:600;color:#b87a00">${totalLeads}</div>
+              <div style="font-size:12px;color:#888;margin-top:4px">Leads</div>
+            </div>
+          </div>
+
+          <h2 style="font-size:15px;color:#333;margin-bottom:12px">Detalle de pedidos</h2>
+          <table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;border:1px solid #eee">
+            <thead>
+              <tr style="background:#f0f0f0">
+                <th style="padding:10px 8px;text-align:left;font-size:12px;color:#666">Cliente</th>
+                <th style="padding:10px 8px;text-align:left;font-size:12px;color:#666">Tipo</th>
+                <th style="padding:10px 8px;text-align:left;font-size:12px;color:#666">Items</th>
+                <th style="padding:10px 8px;text-align:left;font-size:12px;color:#666">Total</th>
+                <th style="padding:10px 8px;text-align:left;font-size:12px;color:#666">Estado</th>
+              </tr>
+            </thead>
+            <tbody>${listaPedidos}</tbody>
+          </table>
+        </div>
+
+        <div style="background:#eee;padding:12px 24px;border-radius:0 0 8px 8px;text-align:center">
+          <p style="font-size:12px;color:#888;margin:0">Giovanni — Agente virtual de Il Ponte Vecchio</p>
+        </div>
+      </div>
+    `;
+
+    await resend.emails.send({
+      from: "Giovanni <onboarding@resend.dev>",
+      to: process.env.ADMIN_EMAIL,
+      subject: `🍕 Resumen del día — ${totalPedidos} pedidos`,
+      html,
+    });
+
+    res.status(200).json({ ok: true, pedidos: totalPedidos, leads: totalLeads });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Error al enviar resumen" });
+  }
+};
