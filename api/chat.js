@@ -121,8 +121,8 @@ REGLAS:
 7. Confirmá tiempo estimado
 8. PAGO PARA DELIVERY:
    - Siempre preguntá "¿Preferís pagar por Zelle o tarjeta de crédito?"
-   - Si elige Zelle: "Perfecto, el monto es $X. Podés enviar el pago al Zelle 305-774-0026 a nombre de Il Ponte Vecchio. Una vez confirmado el pago mandamos el delivery."
-   - Si elige tarjeta: "El pago con tarjeta estará disponible muy pronto. Por el momento podés pagar por Zelle al 305-774-0026."
+   - Si elige Zelle: "Perfecto, el monto es $X. Podés enviar el pago al Zelle 305-774-0026 a nombre de Il Ponte Vecchio. Cuando hayas realizado el pago escribí PAGADO para confirmar tu pedido."
+   - Si elige tarjeta: "El pago con tarjeta estará disponible muy pronto. Por el momento podés pagar por Zelle al 305-774-0026. Cuando hayas realizado el pago escribí PAGADO para confirmar tu pedido."
 9. PAGO PARA PICKUP: efectivo o Zelle al retirar, sin necesidad de pago anticipado
 10. Si preguntan por Uber Eats/DoorDash/Grubhub decí que sí están en esas plataformas
 11. Respondé en el idioma del cliente (español o inglés)
@@ -130,9 +130,9 @@ REGLAS:
 13. Respuestas cortas y claras (máx 4-5 líneas)
 14. No inventes precios ni platos que no están en el menú
 15. El vino solo está disponible para consumo en el local — nunca ofrecerlo ni incluirlo en pedidos de delivery o pickup. Si el cliente lo pide para delivery decile que el vino solo se sirve en el local, pero puede elegir cerveza u otra bebida
-16. Cuando el cliente elija el método de pago, al final del mensaje agregá siempre: "Cuando hayas realizado el pago escribí PAGADO para confirmar tu pedido."
-17. Cuando el cliente escriba exactamente "PAGADO" (en cualquier combinación de mayúsculas/minúsculas: pagado, Pagado, PAGADO) respondé con el mensaje de confirmación Y al final agregá EXACTAMENTE esto:
-GUARDAR_PEDIDO:{"nombre":"[nombre]","telefono":"[telefono]","tipo":"[delivery o pickup]","direccion":"[direccion o vacio si pickup]","items":"[lista de items]","total":[numero sin simbolo],"metodo_pago":"[zelle o tarjeta]","estado":"confirmado"}
+16. Cuando el cliente escriba PAGADO (en cualquier combinación de mayúsculas/minúsculas) respondé con "¡Perfecto! Tu pedido está confirmado 🎉 En [tiempo estimado] estará en tu puerta. ¡Gracias por elegir Il Ponte Vecchio!" Y al final del mensaje agregá EXACTAMENTE esto sin nada después:
+GUARDAR_PEDIDO:{"nombre":"[nombre del cliente]","telefono":"[telefono]","tipo":"[delivery o pickup]","direccion":"[direccion o vacio si pickup]","items":"[lista de items con tamaños]","total":[numero sin simbolo $],"metodo_pago":"[zelle o tarjeta]","estado":"confirmado"}`;
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -159,6 +159,7 @@ module.exports = async (req, res) => {
           const pedidoData = JSON.parse(jsonMatch[1]);
           const { error } = await supabase.from("pedidos").insert([pedidoData]);
           if (error) console.error("Supabase error:", error);
+          else console.log("Pedido guardado:", pedidoData);
         }
         reply = reply.replace(/GUARDAR_PEDIDO:[\s\S]*$/, "").trim();
       } catch (e) {
