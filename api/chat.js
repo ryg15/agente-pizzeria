@@ -130,9 +130,8 @@ REGLAS:
 13. Respuestas cortas y claras (máx 4-5 líneas)
 14. No inventes precios ni platos que no están en el menú
 15. El vino solo está disponible para consumo en el local — nunca ofrecerlo ni incluirlo en pedidos de delivery o pickup. Si el cliente lo pide para delivery decile que el vino solo se sirve en el local, pero puede elegir cerveza u otra bebida
-16. Cuando el cliente confirme el pago (diga "ya pagué", "listo pagué", "hice el pago", "transferí" o similar) respondé EXACTAMENTE con este formato JSON al final de tu mensaje, sin espacios extra:
-GUARDAR_PEDIDO:{"nombre":"[nombre]","telefono":"[telefono]","tipo":"[delivery o pickup]","direccion":"[direccion o vacío si pickup]","items":"[lista de items]","total":[número],"metodo_pago":"[zelle o tarjeta]","estado":"confirmado"}`;
-
+16. Cuando el cliente indique de cualquier forma que ya realizó el pago ("pagué", "listo", "te mandé", "hice la transferencia", "ya", "ok", "enviado", "done", "paid", o cualquier expresión similar) respondé con el mensaje de confirmación Y al final agregá EXACTAMENTE:
+GUARDAR_PEDIDO:{"nombre":"[nombre]","telefono":"[telefono]","tipo":"[delivery o pickup]","direccion":"[direccion o vacío si pickup]","items":"[lista de items]","total":[número],"metodo_pago":"[zelle o tarjeta]","estado":"confirmado"}
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
